@@ -7,21 +7,17 @@
         var body    = $('<div class="category-full"></div>');
         var cors    = 'https://api.allorigins.win/raw?url=';
         
-        function getProxyImg(url) {
-            return 'https://images.weserv.nl/?url=' + encodeURIComponent(url);
-        }
-
         this.create = function () {
-            var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly';
+            var url = object.url;
             this.activity.loader(true);
             
             network.silent(cors + encodeURIComponent(url), (data) => {
                 try {
                     var json = typeof data === 'string' ? JSON.parse(data) : data;
-                    if (json && json.videos && json.videos.length > 0) this.build(json.videos);
+                    if (json && json.videos) this.build(json.videos);
                     else this.empty('Видео не найдены');
                 } catch(e) { this.empty('Ошибка данных'); }
-            }, () => { this.empty('Сеть недоступна'); });
+            }, () => { this.empty('Ошибка сети'); });
 
             return this.render();
         };
@@ -31,11 +27,9 @@
                 var item = Lampa.Template.get('card', { title: video.title, release_year: video.length_min + ' min' });
                 item.addClass('card--collection');
                 var img = item.find('.card__img')[0];
-                if (img) img.src = getProxyImg(video.default_thumb.src);
+                if (img) img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(video.default_thumb.src);
 
-                item.on('hover:enter', () => {
-                    Lampa.Player.play({ url: video.embed, title: video.title });
-                });
+                item.on('hover:enter', () => { Lampa.Player.play({ url: video.embed, title: video.title }); });
                 body.append(item);
             });
             this.activity.loader(false);
@@ -63,52 +57,38 @@
     function epornerEntry() {
         var scroll = new Lampa.Scroll({mask: true, over: true});
         var body   = $('<div class="category-full"></div>');
-        var network = new Lampa.Reguest();
-        var cors    = 'https://api.allorigins.win/raw?url=';
 
         this.create = function () {
-            this.activity.loader(true);
-            // Загружаем список всех категорий/жанров с сайта
-            network.silent(cors + encodeURIComponent('https://www.eporner.com/api/v2/video/search/?per_page=1'), (data) => {
-                // Основные фильтры
-                var base = [
-                    { title: 'Популярные', url: 'https://www.eporner.com/api/v2/video/search/?order=top-weekly' },
-                    { title: 'Новинки', url: 'https://www.eporner.com/api/v2/video/search/?order=latest' },
-                    { title: 'Топ дня', url: 'https://www.eporner.com/api/v2/video/search/?order=top-daily' }
-                ];
-                
-                // Здесь можно было бы добавить парсинг жанров, но API Eporner 
-                // отдает жанры только внутри видео. Поэтому добавим основные вручную:
-                var genres = ['Teen', 'Milf', 'Amateur', 'Anal', 'Big Tits', 'Ebony', 'Hardcore', 'Japanese', 'Pornstar', 'Reality', 'Solo', 'Vintage'];
-                
-                base.forEach(i => this.addCategory(i));
-                genres.forEach(g => {
-                    this.addCategory({
-                        title: g,
-                        url: 'https://www.eporner.com/api/v2/video/search/?query=' + encodeURIComponent(g) + '&per_page=40'
-                    });
-                });
-                
-                this.activity.loader(false);
-                this.activity.toggle();
-            });
+            // МАКСИМАЛЬНЫЙ СПИСОК КАТЕГОРИЙ
+            var categories = [
+                {t: 'Популярные', q: 'top-weekly'}, {t: 'Новинки', q: 'latest'}, {t: 'Топ дня', q: 'top-daily'},
+                {t: 'Teen', q: 'teen'}, {t: 'Milf', q: 'milf'}, {t: 'Amateur', q: 'amateur'},
+                {t: 'Anal', q: 'anal'}, {t: 'Big Tits', q: 'big-tits'}, {t: 'Ebony', q: 'ebony'},
+                {t: 'Japanese', q: 'japanese'}, {t: 'Hardcore', q: 'hardcore'}, {t: 'Reality', q: 'reality'},
+                {t: 'Solo', q: 'solo'}, {t: 'Vintage', q: 'vintage'}, {t: 'Interracial', q: 'interracial'},
+                {t: 'POV', q: 'pov'}, {t: 'Blonde', q: 'blonde'}, {t: 'VR 360', q: 'vr'},
+                {t: 'Asian', q: 'asian'}, {t: 'Latina', q: 'latina'}, {t: 'Redhead', q: 'redhead'},
+                {t: 'BBW', q: 'bbw'}, {t: 'BDSM', q: 'bdsm'}, {t: 'Handjob', q: 'handjob'},
+                {t: 'Creampie', q: 'creampie'}, {t: 'Cumshot', q: 'cumshot'}, {t: 'Squirt', q: 'squirt'},
+                {t: 'Double Penetration', q: 'double-penetration'}, {t: 'Group', q: 'group'},
+                {t: 'Massage', q: 'massage'}, {t: 'Nurse', q: 'nurse'}, {t: 'Public', q: 'public'}
+            ];
 
+            categories.forEach(item => {
+                var card = Lampa.Template.get('card', { title: item.t, release_year: '' });
+                card.addClass('card--category');
+                card.find('.card__img').attr('src', 'https://www.eporner.com/static/images/logo_top.png');
+                
+                var url = (item.q.includes('top') || item.q === 'latest') 
+                    ? 'https://www.eporner.com/api/v2/video/search/?order=' + item.q 
+                    : 'https://www.eporner.com/api/v2/video/search/?query=' + item.q;
+
+                card.on('hover:enter', () => {
+                    Lampa.Activity.push({ title: item.t, url: url + '&per_page=40', component: 'eporner_plugin' });
+                });
+                body.append(card);
+            });
             return this.render();
-        };
-
-        this.addCategory = function(item) {
-            var card = Lampa.Template.get('card', { title: item.title, release_year: '' });
-            card.addClass('card--category');
-            card.find('.card__img').attr('src', 'https://www.eporner.com/static/images/logo_top.png');
-            card.on('hover:enter', () => {
-                Lampa.Activity.push({
-                    title: item.title,
-                    url: item.url,
-                    component: 'eporner_plugin',
-                    page: 1
-                });
-            });
-            body.append(card);
         };
 
         this.start = function () {
