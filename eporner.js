@@ -1,13 +1,11 @@
 (function () {
     'use strict';
 
-    function eporner(object) {
+    function epornerPlugin(object) {
         var network = new Lampa.Reguest();
         var scroll  = new Lampa.Scroll({mask: true, over: true});
         var body    = $('<div class="category-full"></div>');
-        
-        // Используем более надежный прокси для обхода "Сеть недоступна"
-        var proxy = 'https://api.allorigins.win/raw?url=';
+        var proxy   = 'https://api.allorigins.win/raw?url=';
 
         this.create = function () {
             var _this = this;
@@ -18,11 +16,10 @@
                 try {
                     var json = typeof data === 'string' ? JSON.parse(data) : data;
                     if (json && json.videos) _this.build(json.videos);
-                    else _this.empty();
-                } catch(e) { _this.empty(); }
-            }, function () {
-                _this.empty();
-            });
+                    else _this.empty('Видео не найдены');
+                } catch(e) { _this.empty('Ошибка сети'); }
+            }, function () { _this.empty('Прокси не отвечает'); });
+
             return this.render();
         };
 
@@ -32,18 +29,16 @@
                 var item = Lampa.Template.get('card', { title: video.title, release_year: video.length_min + ' min' });
                 item.addClass('card--collection');
                 item.find('.card__img').attr('src', 'https://images.weserv.nl/?url=' + encodeURIComponent(video.default_thumb.src));
-                item.on('hover:enter', function () {
-                    Lampa.Player.play({ url: video.embed, title: video.title });
-                });
+                item.on('hover:enter', function () { Lampa.Player.play({ url: video.embed, title: video.title }); });
                 body.append(item);
             });
             this.activity.loader(false);
             this.activity.toggle();
         };
 
-        this.empty = function () {
+        this.empty = function (msg) {
             this.activity.loader(false);
-            body.append('<div class="empty">Контент не найден. Проверьте VPN.</div>');
+            body.append('<div class="empty">' + msg + '</div>');
             this.activity.toggle();
         };
 
@@ -64,20 +59,16 @@
         this.destroy = function () { network.clear(); scroll.destroy(); body.remove(); };
     }
 
-    function eporner_cats() {
+    function epornerEntry() {
         var scroll = new Lampa.Scroll({mask: true, over: true});
         var body   = $('<div class="category-full"></div>');
         this.create = function () {
-            var genres = [{t:'Популярные', q:'top-weekly'}, {t:'Новинки', q:'latest'}, {t:'Teen', q:'teen'}];
-            genres.forEach(function (item) {
+            var cats = [{t:'Популярные', q:'top-weekly'}, {t:'Новинки', q:'latest'}, {t:'Teen', q:'teen'}];
+            cats.forEach(function (item) {
                 var card = Lampa.Template.get('card', { title: item.t, release_year: '' });
                 card.addClass('card--category');
                 card.on('hover:enter', function () {
-                    Lampa.Activity.push({
-                        title: item.t,
-                        url: 'https://www.eporner.com/api/v2/video/search/?per_page=40&query=' + item.q,
-                        component: 'eporner_mod'
-                    });
+                    Lampa.Activity.push({ title: item.t, url: 'https://www.eporner.com/api/v2/video/search/?query=' + item.q, component: 'eporner_fixed' });
                 });
                 body.append(card);
             });
@@ -91,17 +82,12 @@
         this.destroy = function () { scroll.destroy(); body.remove(); };
     }
 
-    // Регистрация
-    Lampa.Component.add('eporner_mod', eporner);
-    Lampa.Component.add('eporner_cats', eporner_cats);
+    Lampa.Component.add('eporner_fixed', epornerPlugin);
+    Lampa.Component.add('eporner_entry', epornerEntry);
 
     function addMenu() {
-        var item = $('<div class="menu__item selector" data-action="eporner">' +
-            '<div class="menu__text">EPORNER Pro</div>' +
-        '</div>');
-        item.on('hover:enter', function () {
-            Lampa.Activity.push({ title: 'EPORNER Pro', component: 'eporner_cats' });
-        });
+        var item = $('<div class="menu__item selector" data-action="eporner"><div class="menu__text">EPORNER Pro</div></div>');
+        item.on('hover:enter', function () { Lampa.Activity.push({ title: 'EPORNER Pro', component: 'eporner_entry' }); });
         $('.menu .menu__list').first().append(item);
     }
 
