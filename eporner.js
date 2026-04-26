@@ -5,31 +5,33 @@
         var network = new Lampa.Reguest();
         var scroll  = new Lampa.Scroll({mask: true, over: true});
         var body    = $('<div class="category-full"></div>');
-        var cors    = 'https://api.allorigins.win/raw?url=';
+        
+        // Используем более мощный прокси для обхода блокировок в браузере
+        var cors = 'https://api.allorigins.win/raw?url=';
         
         this.create = function () {
-            var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40';
+            var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly';
             this.activity.loader(true);
             
+            // Пытаемся получить данные
             network.silent(cors + encodeURIComponent(url), (data) => {
                 try {
                     var json = typeof data === 'string' ? JSON.parse(data) : data;
-                    if (json.videos && json.videos.length) {
+                    if (json && json.videos && json.videos.length > 0) {
                         this.build(json.videos);
                     } else {
-                        this.empty();
+                        this.empty('Видео не найдены или API недоступно');
                     }
                 } catch(e) {
-                    this.empty();
+                    this.empty('Ошибка обработки данных (JSON Error)');
                 }
             }, () => {
-                this.empty();
+                this.empty('Прокси-сервер не отвечает. Попробуйте обновить страницу.');
             });
 
             return this.render();
         };
 
-        // Добавляем обязательную функцию start, из-за которой была ошибка
         this.start = function () {
             Lampa.Controller.enable('content');
         };
@@ -41,8 +43,11 @@
                     release_year: video.length_min + ' min'
                 });
                 item.addClass('card--collection');
-                item.find('.card__img').attr('src', video.default_thumb.src);
                 
+                // Устанавливаем картинку
+                var img = item.find('.card__img')[0];
+                img.src = video.default_thumb.src;
+
                 item.on('hover:enter', () => {
                     Lampa.Player.play({
                         url: video.embed,
@@ -55,8 +60,8 @@
             this.start();
         };
 
-        this.empty = function () {
-            body.append('<div class="empty">Контент не найден</div>');
+        this.empty = function (msg) {
+            body.empty().append('<div class="empty">' + (msg || 'Контент не найден') + '</div>');
             this.activity.loader(false);
         };
 
@@ -74,7 +79,6 @@
     function startPlugin() {
         Lampa.Component.add('eporner_plugin', epornerPlugin);
 
-        // Проверяем, чтобы не добавить дубликат в меню
         if ($('div[data-action="eporner"]').length > 0) return;
 
         var menu_item = $('<div class="menu__item selector" data-action="eporner">' +
@@ -86,8 +90,7 @@
             Lampa.Activity.push({
                 url: 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly',
                 title: 'EPORNER Pro',
-                component: 'eporner_plugin',
-                page: 1
+                component: 'eporner_plugin'
             });
         });
 
