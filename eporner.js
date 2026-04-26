@@ -5,19 +5,20 @@
         var network = new Lampa.Reguest();
         var scroll  = new Lampa.Scroll({mask: true, over: true});
         var body    = $('<div class="category-full"></div>');
-        var cors    = 'https://api.allorigins.win/raw?url=';
+        var cors    = 'https://api.allorigins.win/raw?url='; // Запасной прокси внутри
         
         this.create = function () {
-            var url = object.url;
+            var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly';
             this.activity.loader(true);
             
-            network.silent(cors + encodeURIComponent(url), (data) => {
+            // Используем прямой CORS-прокси
+            network.silent('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), (data) => {
                 try {
                     var json = typeof data === 'string' ? JSON.parse(data) : data;
                     if (json && json.videos) this.build(json.videos);
                     else this.empty('Видео не найдены');
-                } catch(e) { this.empty('Ошибка данных'); }
-            }, () => { this.empty('Ошибка сети'); });
+                } catch(e) { this.empty('Ошибка парсинга'); }
+            }, () => { this.empty('Сеть недоступна (попробуйте VPN)'); });
 
             return this.render();
         };
@@ -26,10 +27,13 @@
             videos.forEach(video => {
                 var item = Lampa.Template.get('card', { title: video.title, release_year: video.length_min + ' min' });
                 item.addClass('card--collection');
+                
                 var img = item.find('.card__img')[0];
                 if (img) img.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(video.default_thumb.src);
 
-                item.on('hover:enter', () => { Lampa.Player.play({ url: video.embed, title: video.title }); });
+                item.on('hover:enter', () => {
+                    Lampa.Player.play({ url: video.embed, title: video.title });
+                });
                 body.append(item);
             });
             this.activity.loader(false);
@@ -41,7 +45,7 @@
 
         this.start = function () {
             Lampa.Controller.add('content', {
-                toggle: () => { Lampa.Controller.collectionSet(body); },
+                toggle: () => { Lampa.Controller.collectionSet(body); Lampa.Controller.follow('container'); },
                 left: () => { Lampa.Controller.toggle('menu'); },
                 up: () => { Lampa.Controller.toggle('head'); },
                 back: () => { Lampa.Activity.backward(); }
@@ -59,19 +63,25 @@
         var body   = $('<div class="category-full"></div>');
 
         this.create = function () {
-            // МАКСИМАЛЬНЫЙ СПИСОК КАТЕГОРИЙ
             var categories = [
                 {t: 'Популярные', q: 'top-weekly'}, {t: 'Новинки', q: 'latest'}, {t: 'Топ дня', q: 'top-daily'},
                 {t: 'Teen', q: 'teen'}, {t: 'Milf', q: 'milf'}, {t: 'Amateur', q: 'amateur'},
                 {t: 'Anal', q: 'anal'}, {t: 'Big Tits', q: 'big-tits'}, {t: 'Ebony', q: 'ebony'},
                 {t: 'Japanese', q: 'japanese'}, {t: 'Hardcore', q: 'hardcore'}, {t: 'Reality', q: 'reality'},
                 {t: 'Solo', q: 'solo'}, {t: 'Vintage', q: 'vintage'}, {t: 'Interracial', q: 'interracial'},
-                {t: 'POV', q: 'pov'}, {t: 'Blonde', q: 'blonde'}, {t: 'VR 360', q: 'vr'},
-                {t: 'Asian', q: 'asian'}, {t: 'Latina', q: 'latina'}, {t: 'Redhead', q: 'redhead'},
-                {t: 'BBW', q: 'bbw'}, {t: 'BDSM', q: 'bdsm'}, {t: 'Handjob', q: 'handjob'},
-                {t: 'Creampie', q: 'creampie'}, {t: 'Cumshot', q: 'cumshot'}, {t: 'Squirt', q: 'squirt'},
-                {t: 'Double Penetration', q: 'double-penetration'}, {t: 'Group', q: 'group'},
-                {t: 'Massage', q: 'massage'}, {t: 'Nurse', q: 'nurse'}, {t: 'Public', q: 'public'}
+                {t: 'POV', q: 'pov'}, {t: 'Blonde', q: 'blonde'}, {t: 'Asian', q: 'asian'},
+                {t: 'Latina', q: 'latina'}, {t: 'Redhead', q: 'redhead'}, {t: 'BBW', q: 'bbw'},
+                {t: 'BDSM', q: 'bdsm'}, {t: 'Handjob', q: 'handjob'}, {t: 'Creampie', q: 'creampie'},
+                {t: 'Cumshot', q: 'cumshot'}, {t: 'Squirt', q: 'squirt'}, {t: 'Massage', q: 'massage'},
+                {t: 'Nurse', q: 'nurse'}, {t: 'Public', q: 'public'}, {t: 'Brunette', q: 'brunette'},
+                {t: 'Babysitter', q: 'babysitter'}, {t: 'Big Butt', q: 'big-butt'}, {t: 'Double Penetration', q: 'double-penetration'},
+                {t: 'Facial', q: 'facial'}, {t: 'Fetish', q: 'fetish'}, {t: 'Fingering', q: 'fingering'},
+                {t: 'Gangs', q: 'gangbang'}, {t: 'Goth', q: 'goth'}, {t: 'Hairy', q: 'hairy'},
+                {t: 'Hidden Cam', q: 'hidden-cam'}, {t: 'Lingerie', q: 'lingerie'}, {t: 'Masturbation', q: 'masturbation'},
+                {t: 'Office', q: 'office'}, {t: 'Old/Young', q: 'old-young'}, {t: 'Outdoor', q: 'outdoor'},
+                {t: 'Pornstar', q: 'pornstar'}, {t: 'Small Tits', q: 'small-tits'}, {t: 'Socks', q: 'socks'},
+                {t: 'Stockings', q: 'stockings'}, {t: 'Striptease', q: 'striptease'}, {t: 'Tattoo', q: 'tattoo'},
+                {t: 'Threesome', q: 'threesome'}, {t: 'Toys', q: 'toys'}, {t: 'Uniform', q: 'uniform'}
             ];
 
             categories.forEach(item => {
@@ -100,8 +110,6 @@
         };
 
         this.render = function () { scroll.append(body); return scroll.render(); };
-        this.pause = function () {};
-        this.stop = function () {};
         this.destroy = function () { scroll.destroy(); };
     }
 
