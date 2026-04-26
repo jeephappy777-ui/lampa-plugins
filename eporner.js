@@ -2,7 +2,10 @@
     'use strict';
 
     function startPlugin() {
-        // Регистрация компонента
+        // Проверка: если пункт уже есть, не добавляем второй раз
+        if ($('div[data-action="eporner_pro"]').length > 0) return;
+
+        // Регистрируем компонент
         Lampa.Component.add('eporner_plugin', function (object) {
             var network = new Lampa.Reguest();
             var scroll  = new Lampa.Scroll({mask: true, over: true});
@@ -38,17 +41,36 @@
             this.destroy = function () { network.clear(); scroll.destroy(); };
         });
 
-        // Добавление в меню
-        Lampa.Menu.add({
-            id: 'eporner',
-            title: 'EPORNER Pro',
-            icon: '<svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="currentColor"/></svg>',
-            component: 'eporner_plugin',
-            url: 'https://www.eporner.com/api/v2/video/search/?per_page=40'
+        // ПРИНУДИТЕЛЬНОЕ ДОБАВЛЕНИЕ В МЕНЮ
+        var menu_item = $('<div class="menu__item selector" data-action="eporner_pro">' +
+            '<div class="menu__ico"><svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="currentColor"/></svg></div>' +
+            '<div class="menu__text">EPORNER Pro</div>' +
+        '</div>');
+
+        menu_item.on('hover:enter', function () {
+            Lampa.Activity.push({
+                url: 'https://www.eporner.com/api/v2/video/search/?per_page=40',
+                title: 'EPORNER Pro',
+                component: 'eporner_plugin'
+            });
         });
+
+        // Вставляем пункт в меню после того, как оно отрисуется
+        $('.menu .menu__list').prepend(menu_item);
+        
+        // Показываем уведомление, что плагин загружен (для теста)
+        Lampa.Noty.show('EPORNER Pro успешно загружен!');
     }
 
-    // Запуск
-    if (window.appready) startPlugin();
-    else Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') startPlugin(); });
+    // Запуск через разные интервалы, чтобы точно поймать готовность меню
+    if (window.appready) {
+        startPlugin();
+    } else {
+        Lampa.Listener.follow('app', function (e) {
+            if (e.type == 'ready') {
+                setTimeout(startPlugin, 100);
+                setTimeout(startPlugin, 1000); // Повтор через секунду, если меню не успело
+            }
+        });
+    }
 })();
