@@ -7,6 +7,11 @@
         var body    = $('<div class="category-full"></div>');
         var cors    = 'https://api.allorigins.win/raw?url=';
         
+        // Прокси для картинок, чтобы обойти блокировку "Hotlinking"
+        function getProxyImg(url) {
+            return 'https://images.weserv.nl/?url=' + encodeURIComponent(url);
+        }
+
         this.create = function () {
             var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly';
             this.activity.loader(true);
@@ -26,8 +31,15 @@
             videos.forEach(video => {
                 var item = Lampa.Template.get('card', { title: video.title, release_year: video.length_min + ' min' });
                 item.addClass('card--collection');
-                item.find('.card__img').attr('src', video.default_thumb.src);
-                item.on('hover:enter', () => { Lampa.Player.play({ url: video.embed, title: video.title }); });
+                
+                // Используем прокси для обложек
+                var img = item.find('.card__img')[0];
+                if (img) img.src = getProxyImg(video.default_thumb.src);
+
+                item.on('hover:enter', () => {
+                    // Используем embed ссылку, но Лампа в браузере может все равно ловить рекламу сайта
+                    Lampa.Player.play({ url: video.embed, title: video.title });
+                });
                 body.append(item);
             });
             this.activity.loader(false);
@@ -58,15 +70,15 @@
 
         this.create = function () {
             var categories = [
-                { title: 'Популярные', url: 'https://www.eporner.com/api/v2/video/search/?order=top-weekly' },
-                { title: 'Новинки', url: 'https://www.eporner.com/api/v2/video/search/?order=latest' },
-                { title: 'Топ дня', url: 'https://www.eporner.com/api/v2/video/search/?order=top-daily' }
+                { title: 'Популярные', url: 'https://www.eporner.com/api/v2/video/search/?order=top-weekly', img: 'https://www.eporner.com/static/images/logo_top.png' },
+                { title: 'Новинки', url: 'https://www.eporner.com/api/v2/video/search/?order=latest', img: 'https://www.eporner.com/static/images/logo_top.png' },
+                { title: 'Топ дня', url: 'https://www.eporner.com/api/v2/video/search/?order=top-daily', img: 'https://www.eporner.com/static/images/logo_top.png' }
             ];
 
             categories.forEach(item => {
                 var card = Lampa.Template.get('card', { title: item.title, release_year: '' });
                 card.addClass('card--category');
-                card.find('.card__img').attr('src', 'https://www.eporner.com/static/images/logo_top.png');
+                card.find('.card__img').attr('src', item.img);
                 card.on('hover:enter', () => {
                     Lampa.Activity.push({ title: item.title, url: item.url, component: 'eporner_plugin' });
                 });
@@ -76,9 +88,7 @@
         };
 
         this.start = function () {
-            Lampa.Controller.add('content', {
-                toggle: () => { Lampa.Controller.collectionSet(body); }
-            });
+            Lampa.Controller.add('content', { toggle: () => { Lampa.Controller.collectionSet(body); } });
             Lampa.Controller.toggle('content');
         };
 
