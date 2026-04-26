@@ -4,36 +4,28 @@
     function epornerPlugin(object) {
         var network = new Lampa.Reguest();
         var scroll  = new Lampa.Scroll({mask: true, over: true});
+        var items   = [];
         var body    = $('<div class="category-full"></div>');
-        
-        // Используем более мощный прокси для обхода блокировок в браузере
-        var cors = 'https://api.allorigins.win/raw?url=';
+        var cors    = 'https://api.allorigins.win/raw?url=';
         
         this.create = function () {
             var url = object.url || 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly';
             this.activity.loader(true);
             
-            // Пытаемся получить данные
             network.silent(cors + encodeURIComponent(url), (data) => {
                 try {
                     var json = typeof data === 'string' ? JSON.parse(data) : data;
                     if (json && json.videos && json.videos.length > 0) {
                         this.build(json.videos);
                     } else {
-                        this.empty('Видео не найдены или API недоступно');
+                        this.empty('Видео не найдены');
                     }
                 } catch(e) {
-                    this.empty('Ошибка обработки данных (JSON Error)');
+                    this.empty('Ошибка данных');
                 }
-            }, () => {
-                this.empty('Прокси-сервер не отвечает. Попробуйте обновить страницу.');
-            });
+            }, () => { this.empty('Сеть недоступна'); });
 
             return this.render();
-        };
-
-        this.start = function () {
-            Lampa.Controller.enable('content');
         };
 
         this.build = function (videos) {
@@ -43,25 +35,22 @@
                     release_year: video.length_min + ' min'
                 });
                 item.addClass('card--collection');
-                
-                // Устанавливаем картинку
-                var img = item.find('.card__img')[0];
-                img.src = video.default_thumb.src;
+                item.find('.card__img').attr('src', video.default_thumb.src);
 
                 item.on('hover:enter', () => {
-                    Lampa.Player.play({
-                        url: video.embed,
-                        title: video.title
-                    });
+                    Lampa.Player.play({ url: video.embed, title: video.title });
                 });
+
                 body.append(item);
+                items.push(item);
             });
+
             this.activity.loader(false);
-            this.start();
+            this.activity.toggle(); // Сообщаем Lampa, что контент готов
         };
 
         this.empty = function (msg) {
-            body.empty().append('<div class="empty">' + (msg || 'Контент не найден') + '</div>');
+            body.append('<div class="empty">' + msg + '</div>');
             this.activity.loader(false);
         };
 
@@ -70,31 +59,65 @@
             return scroll.render();
         };
 
-        this.back = function () { Lampa.Activity.backward(); };
+        // Исправляем навигацию (скролл вниз)
+        this.start = function () {
+            Lampa.Controller.add('content', {
+                toggle: () => {
+                    Lampa.Controller.collectionSet(body);
+                    Lampa.Controller.follow('container');
+                },
+                left: () => { Lampa.Controller.toggle('menu'); },
+                up: () => { Lampa.Controller.toggle('head'); },
+                back: () => { Lampa.Activity.backward(); }
+            });
+            Lampa.Controller.toggle('content');
+        };
+
         this.pause = function () {};
         this.stop = function () {};
         this.destroy = function () { network.clear(); scroll.destroy(); };
     }
 
+    // Входная точка с КАТЕГОРИЯМИ
+    function epornerEntry() {
+        this.create = function () {
+            var menu = [
+                { title: 'Популярные', url: 'https://www.eporner.com/api/v2/video/search/?order=top-weekly' },
+                { title: 'Новинки', url: 'https://www.eporner.com/api/v2/video/search/?order=latest' },
+                { title: 'Топ дня', url: 'https://www.eporner.com/api/v2/video/search/?order=top-daily' },
+                { title: 'Гей', url: 'https://www.eporner.com/api/v2/video/search/?query=gay' }
+            ];
+
+            var body = $('<div class="category-full"></div>');
+            menu.forEach(item => {
+                var card = Lampa.Template.get('card', { title: item.title, release_year: '' });
+                card.addClass('card--category'); 
+                card.find('.card__img').css('background-color', '#333');
+                card.on('hover:enter', () => {
+                    Lampa.Activity.push({
+                        title: item.title,
+                        url: item.url,
+                        component: 'eporner_plugin'
+                    });
+                });
+                body.append(card);
+            });
+
+            return body;
+        };
+        this.start = function () { Lampa.Controller.add('content', { toggle: () => { Lampa.Controller.collectionSet($('.category-full')); Lampa.Controller.follow('container'); } }); Lampa.Controller.toggle('content'); };
+    }
+
     function startPlugin() {
         Lampa.Component.add('eporner_plugin', epornerPlugin);
+        Lampa.Component.add('eporner_entry', epornerEntry);
 
-        if ($('div[data-action="eporner"]').length > 0) return;
-
-        var menu_item = $('<div class="menu__item selector" data-action="eporner">' +
-            '<div class="menu__ico"><svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="currentColor"/></svg></div>' +
-            '<div class="menu__text">EPORNER Pro</div>' +
-        '</div>');
-
-        menu_item.on('hover:enter', function () {
-            Lampa.Activity.push({
-                url: 'https://www.eporner.com/api/v2/video/search/?per_page=40&order=top-weekly',
-                title: 'EPORNER Pro',
-                component: 'eporner_plugin'
-            });
+        Lampa.Menu.add({
+            id: 'eporner',
+            title: 'EPORNER Pro',
+            icon: '<svg height="36" viewBox="0 0 24 24" width="36" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" fill="currentColor"/></svg>',
+            component: 'eporner_entry'
         });
-
-        $('.menu .menu__list').first().append(menu_item);
     }
 
     if (window.appready) startPlugin();
